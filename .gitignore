@@ -1,0 +1,16 @@
+# Local configuration (contains the database password).
+.env
+
+# macOS metadata.
+.DS_Store
+
+# Optional local Docker/Compose overrides and data dumps.
+compose.override.yaml
+*.dump
+*.sql.gz
+
+# PostgreSQL data directory (created at runtime; initdb needs it empty).
+/data/postgres/
+
+# Local backups.
+/backups/

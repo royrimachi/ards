@@ -1,0 +1,36 @@
+# compose.yaml
+# Shared PostgreSQL instance for every lab in the project.
+#
+# - One container, one data directory, and one set of credentials for the whole
+#   repo. Database files are bind-mounted into ./data/postgres (git-ignored).
+# - Each lab creates and uses its own database inside this instance
+#   (lab_2 -> optimization_db, a future lab_3 -> lab_3_db, and so on).
+# - Managed through ./scripts/db-*.sh or `docker compose`; labs must not start
+#   their own containers.
+
+name: ards
+
+services:
+  postgres:
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example first)}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      # Comma-separated databases created by the init script on a fresh cluster.
+      POSTGRES_DATABASES: ${POSTGRES_DATABASES:-optimization_db}
+    ports:
+      # Bind to localhost only: the database is not exposed to the network.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Bind mount: the cluster lives inside the repository and is git-ignored.
+      # Stop the container before copying this directory.
+      - ${POSTGRES_DATA_DIR:-./data/postgres}:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

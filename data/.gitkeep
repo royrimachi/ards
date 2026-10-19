@@ -1,0 +1,3 @@
+# Keeps the runtime data folder in the repository.
+# The PostgreSQL cluster is created at runtime in data/postgres and is ignored
+# by git. initdb requires data/postgres to be empty on first start.
