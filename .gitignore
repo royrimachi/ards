@@ -14,3 +14,7 @@ compose.override.yaml
 
 # Local backups.
 /backups/
+
+# JetBrains / DataGrip: share connection definitions, not local state.
+.idea/*
+!.idea/dataSources.xml

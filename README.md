@@ -8,6 +8,7 @@ ards/
 ├── compose.yaml                 # shared PostgreSQL service
 ├── .env                         # local credentials/ports (git-ignored)
 ├── .env.example                 # documented template
+├── .idea/dataSources.xml        # shared DataGrip connections (no credentials)
 ├── Makefile                     # optional command facade (see below)
 ├── docker/postgres/initdb/      # creates one DB per lab on a fresh cluster
 ├── data/                        # runtime data (git-ignored, folder is kept)
@@ -64,6 +65,7 @@ Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 | `make down` | Remove the container (data stays in `data/postgres`) |
 | `make psql DB=optimization_db` | Interactive psql |
 | `make db-create DB=lab_3_db` | Create a database |
+| `make db-info` | Print host, port, user and JDBC URLs for DataGrip |
 | `make labs` | List discovered labs |
 | `make lab_2` | Open a lab's interactive menu |
 | `make lab_2-schema [ARGS=--reset]` | Create tables, or recreate only that lab's database |
@@ -75,6 +77,32 @@ Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 Lab targets are pattern rules (`lab_%-schema`, `lab_%-data`, …), so `lab_3`,
 `lab_4`, etc. work as soon as `labs/lab_N/config.sh` exists and its scripts
 follow the naming convention. No Makefile change is required.
+
+## Connecting with DataGrip
+
+The repository commits `.idea/dataSources.xml`, which contains a shared,
+password-free data source for `optimization_db`. Open the repository folder as a
+DataGrip project and the source is loaded automatically.
+
+1. Open **Data Sources and Drivers** (`Cmd+;` / `Ctrl+Alt+Shift+S`).
+2. Select **ARDS optimization_db**.
+3. Set **User** to `POSTGRES_USER` from `.env` (default `postgres`).
+4. Set **Password** to `POSTGRES_PASSWORD` from `.env`.
+5. Click **Test Connection**.
+
+`make db-info` prints the host, port, user and JDBC URLs for every database.
+DataGrip stores the password in the macOS Keychain (or KeePass); it is never
+written to the repository.
+
+Only connection definitions are versioned. `.idea/dataSources.local.xml` (which
+holds your user name and introspection scope), `.idea/workspace.xml` and any
+password are per-user and ignored by git. Do not create a URL-only data source
+with credentials embedded in the JDBC URL — that would copy the password into
+`dataSources.xml`.
+
+For a new lab, duplicate the data source in DataGrip and change the database
+name to `lab_N_db`, or add a `<data-source>` entry to `.idea/dataSources.xml`
+with a new UUID. Then commit the updated file.
 
 ## Lifecycle
 

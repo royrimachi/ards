@@ -20,7 +20,7 @@ LABS := $(notdir $(patsubst %/config.sh,%,$(wildcard labs/*/config.sh)))
 # guard <stem>: fails with a helpful message when the lab does not exist.
 guard = @test -d "labs/lab_$1" || { echo "error: unknown lab '$1' (available: $(LABS))" >&2; exit 1; }
 
-.PHONY: help up stop restart status down psql db-create labs check $(LABS)
+.PHONY: help up stop restart status down psql db-create db-info labs check $(LABS)
 
 help: ## Show this help
 	@echo "ARDS Labs - available targets"
@@ -51,6 +51,9 @@ psql: ## Open psql: make psql [DB=database]
 
 db-create: ## Create a database: make db-create DB=lab_3_db
 	./scripts/db-create.sh $(DB)
+
+db-info: ## Print connection details and JDBC URLs for DataGrip
+	./scripts/db-info.sh
 
 labs: ## List discovered labs
 	@echo "$(LABS)"
