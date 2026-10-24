@@ -24,21 +24,25 @@ show_menu() {
   echo " 5) Create advanced indexes"
   echo " 6) Demonstrate query rewriting"
   echo " 7) Optional: demonstrate partitioning"
-  echo " 8) Reset the lab database (drop and recreate)"
-  echo " 9) Show database status"
-  echo "10) Open psql shell for the lab database"
-  echo "11) Stop PostgreSQL (keep data)"
-  echo "12) Exit"
+  echo " 8) Log query performance (EXPLAIN ANALYZE)"
+  echo " 9) Show query performance report"
+  echo "10) Reset the lab database (drop and recreate)"
+  echo "11) Show database status"
+  echo "12) Open psql shell for the lab database"
+  echo "13) Stop PostgreSQL (keep data)"
+  echo "14) Exit"
   echo "---------------------------------------------------"
 }
 
 run_script() {
-  bash "$SCRIPT_DIR/$1"
+  local script="$1"
+  shift
+  bash "$SCRIPT_DIR/$script" "$@"
 }
 
 while true; do
   show_menu
-  read -r -p "Enter your choice [1-12]: " choice
+  read -r -p "Enter your choice [1-14]: " choice
   echo
 
   case "$choice" in
@@ -49,12 +53,14 @@ while true; do
     5)  run_script create_indexes.sh ;;
     6)  run_script query_rewrite.sh ;;
     7)  run_script partitioning_demo.sh ;;
-    8)  run_script create_schema.sh --reset ;;
-    9)  bash "$PROJECT_ROOT/scripts/db-status.sh" ;;
-    10) bash "$PROJECT_ROOT/scripts/db-shell.sh" "$LAB_DB_NAME" ;;
-    11) run_script stop_container.sh ;;
-    12) echo "Exiting..."; break ;;
-    *)  echo "Invalid choice. Please enter a number between 1 and 12." ;;
+    8)  run_script log_performance.sh ;;
+    9)  run_script log_performance.sh --report ;;
+    10) run_script create_schema.sh --reset ;;
+    11) bash "$PROJECT_ROOT/scripts/db-status.sh" ;;
+    12) bash "$PROJECT_ROOT/scripts/db-shell.sh" "$LAB_DB_NAME" ;;
+    13) run_script stop_container.sh ;;
+    14) echo "Exiting..."; break ;;
+    *)  echo "Invalid choice. Please enter a number between 1 and 14." ;;
   esac
 
   echo

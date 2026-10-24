@@ -22,6 +22,7 @@ ards/
 │   └── db-shell.sh              # interactive psql
 └── labs/
     └── lab_2/
+        ├── README.md            # lab guide, incl. activity #2 performance logging
         ├── config.sh            # LAB_DB_NAME=optimization_db
         └── scripts/             # lab exercises
 ```
@@ -48,10 +49,15 @@ make lab_2-explain
 make lab_2-indexes
 make lab_2-rewrite
 make lab_2-partition
+make lab_2-log ARGS="--repeat 3 --interval 2"
+make lab_2-report
 ```
 
 `make` is a convenience layer only; the scripts below work without it. Run
 `make help` to list every target and `make labs` to list discovered labs.
+
+The per-lab walkthrough and the query performance logging exercise are documented
+in [labs/lab_2/README.md](labs/lab_2/README.md).
 
 Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 `.env`, database `optimization_db`.
@@ -71,6 +77,8 @@ Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 | `make lab_2-schema [ARGS=--reset]` | Create tables, or recreate only that lab's database |
 | `make lab_2-data [ARGS=--force]` | Insert sample data |
 | `make lab_2-explain` / `lab_2-indexes` / `lab_2-rewrite` / `lab_2-partition` | Lab demos |
+| `make lab_2-log [ARGS="--repeat 3 --interval 2"]` | Log EXPLAIN ANALYZE metrics for the critical queries |
+| `make lab_2-report` | Show average timings, run-over-run deltas and daily trends |
 | `make lab_2-reset` | **Destructive**: drop and recreate only that lab's database |
 | `make check` | Validate shell syntax and the compose file |
 
@@ -124,6 +132,8 @@ Lab scripts:
 | `create_schema.sh --reset` | Drop/recreate **only** `optimization_db` |
 | `insert_data.sh` | Insert sample data; skips if employees already exist |
 | `insert_data.sh --force` | Append another 20,000 employees |
+| `log_performance.sh` | Run EXPLAIN ANALYZE over the critical queries and log metrics |
+| `log_performance.sh --report` | Summarize `performance_log` over multiple runs |
 
 ## Adding a new lab
 

@@ -89,6 +89,14 @@ lab_%-partition: ## Run partitioning demo: make lab_2-partition
 	$(call guard,$*)
 	./labs/lab_$*/scripts/partitioning_demo.sh
 
+lab_%-log: ## Log query performance: make lab_2-log [ARGS="--repeat 3 --interval 2"]
+	$(call guard,$*)
+	./labs/lab_$*/scripts/log_performance.sh $(ARGS)
+
+lab_%-report: ## Show query performance trends: make lab_2-report
+	$(call guard,$*)
+	./labs/lab_$*/scripts/log_performance.sh --report
+
 lab_%-reset: ## DESTRUCTIVE: recreate only that lab's database
 	$(call guard,$*)
 	./labs/lab_$*/scripts/create_schema.sh --reset
