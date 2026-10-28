@@ -23,7 +23,7 @@ show_menu() {
   echo " 4) Run basic EXPLAIN/EXPLAIN ANALYZE demos"
   echo " 5) Create advanced indexes"
   echo " 6) Demonstrate query rewriting"
-  echo " 7) Optional: demonstrate partitioning"
+  echo " 7) Optional: demonstrate partitioning and insert routing"
   echo " 8) Log query performance (EXPLAIN ANALYZE)"
   echo " 9) Show query performance report"
   echo "10) Reset the lab database (drop and recreate)"

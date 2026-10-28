@@ -76,7 +76,7 @@ Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 | `make lab_2` | Open a lab's interactive menu |
 | `make lab_2-schema [ARGS=--reset]` | Create tables, or recreate only that lab's database |
 | `make lab_2-data [ARGS=--force]` | Insert sample data |
-| `make lab_2-explain` / `lab_2-indexes` / `lab_2-rewrite` / `lab_2-partition` | Lab demos |
+| `make lab_2-explain` / `lab_2-indexes` / `lab_2-rewrite` / `lab_2-partition [ARGS=--bulk]` | Lab demos |
 | `make lab_2-log [ARGS="--repeat 3 --interval 2"]` | Log EXPLAIN ANALYZE metrics for the critical queries |
 | `make lab_2-report` | Show average timings, run-over-run deltas and daily trends |
 | `make lab_2-reset` | **Destructive**: drop and recreate only that lab's database |

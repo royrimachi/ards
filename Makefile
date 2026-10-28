@@ -85,9 +85,9 @@ lab_%-rewrite: ## Run query rewrite demo: make lab_2-rewrite
 	$(call guard,$*)
 	./labs/lab_$*/scripts/query_rewrite.sh
 
-lab_%-partition: ## Run partitioning demo: make lab_2-partition
+lab_%-partition: ## Run partitioning demo: make lab_2-partition [ARGS=--bulk]
 	$(call guard,$*)
-	./labs/lab_$*/scripts/partitioning_demo.sh
+	./labs/lab_$*/scripts/partitioning_demo.sh $(ARGS)
 
 lab_%-log: ## Log query performance: make lab_2-log [ARGS="--repeat 3 --interval 2"]
 	$(call guard,$*)

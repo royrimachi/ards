@@ -163,4 +163,89 @@ per day before any retention policy is applied.
 - A single timing is noisy. Use several runs and compare averages or trends
   rather than one sample.
 - `performance_log` grows forever. For a real deployment, add a retention job or
-  partition the table by `logged_at`.
+  [partition the table by `logged_at`](#optional-partitioning-advanced).
+
+## Optional: partitioning (advanced)
+
+`make lab_2-partition` creates `employees_partitioned`, a list-partitioned copy of
+`employees` keyed on `department`, inserts sample rows and shows where they land.
+Add `ARGS=--bulk` to also copy the existing `employees` rows:
+
+```bash
+make lab_2-partition
+make lab_2-partition ARGS=--bulk
+```
+
+### Insert into the parent, never the partitions
+
+With declarative partitioning you write to the parent table and PostgreSQL routes
+each row to the partition whose bounds match:
+
+```sql
+INSERT INTO employees_partitioned (first_name, last_name, department, email)
+VALUES ('Ana', 'Ruiz', 'Sales', 'ana.ruiz@example.com');
+```
+
+The row physically lives in `employees_sales`, but `SELECT * FROM
+employees_partitioned` returns it like any other row. Do not `INSERT INTO
+employees_sales` directly: bypassing the parent hides the routing behaviour and
+breaks when partition bounds change.
+
+A department with **no matching partition** fails the whole statement:
+
+```text
+ERROR: no partition of relation "employees_partitioned" found for row
+DETAIL: Partition key of the failing row contains (department) = (Engineering).
+```
+
+That is why the demo creates one partition per value used by `insert_data.sql`.
+The alternative is a catch-all:
+
+```sql
+CREATE TABLE employees_default
+    PARTITION OF employees_partitioned DEFAULT;
+```
+
+A `DEFAULT` partition absorbs unknown values, but its rows are invisible to
+partition pruning and they **block** a later `CREATE TABLE ... PARTITION OF ...
+FOR VALUES IN (...)` that covers them until the rows are moved out.
+
+### Bulk load
+
+`INSERT ... SELECT` and `COPY` also target the parent, so every row is routed in
+one pass instead of 20,000 round trips:
+
+```sql
+INSERT INTO employees_partitioned (first_name, last_name, department, department_id, email)
+SELECT first_name, last_name, department, department_id, email
+FROM employees;
+```
+
+The demo guards this with an anti-join on the business columns, so re-running
+`make lab_2-partition ARGS=--bulk` does not duplicate rows.
+
+### Verifying the routing
+
+`tableoid` names the physical partition that holds each row:
+
+```sql
+SELECT tableoid::regclass AS partition, count(*) AS rows
+FROM employees_partitioned
+GROUP BY 1
+ORDER BY 1;
+```
+
+`\d+ employees_partitioned` lists the partitions and their bounds. Filtering the
+parent on the partition key also prunes the plan down to the relevant partition,
+which the demo shows with `EXPLAIN (COSTS OFF)`.
+
+### Two constraints to keep in mind
+
+- **The primary key must include the partition key.** The demo uses
+  `PRIMARY KEY (id, department)`, so `id` is unique per department, not globally.
+  Two departments can both hold `id = 1`; use a shared sequence or a composite
+  business key if you need uniqueness across the whole table.
+- **Attaching an existing table** needs matching data:
+  `ALTER TABLE employees_partitioned ATTACH PARTITION employees_sales FOR VALUES
+  IN ('Sales');` scans and validates the table, and takes an `ACCESS EXCLUSIVE`
+  lock unless a matching `CHECK` constraint was added first.

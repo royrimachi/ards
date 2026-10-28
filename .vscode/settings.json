@@ -1,0 +1,8 @@
+{
+  "latex-workshop.formatting.latex": "latexindent",
+  "[latex]": {
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 80,
+    "editor.lineNumbers": "relative"
+  }
+}
