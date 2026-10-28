@@ -22,12 +22,25 @@
 \maketitle
 
 \begin{enumerate}
-    \item What is the difference between \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE}?
+      \item \textbf{What is the difference between \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE}?}
 
-    \item Why might an index not be used even when it exists?
+            The main difference between \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} is that \texttt{EXPLAIN} provides the execution plan of a query without actually executing it, while \texttt{EXPLAIN ANALYZE} executes the query and provides the execution plan along with actual run-time statistics, such as the number of rows processed and the time taken for each step.
 
-    \item How can partitioning improve query performance?
-    
+      \item \textbf{Why might an index not be used even when it exists?}
+
+            There are several reasons why an index might not be used even when it was created. Some of those common reasons are:
+
+            \begin{itemize}
+                  \item The query optimizer may determine that a sequential scan is more efficient than using the index, especially for small tables or when a large portion of the table is being accessed.
+                  \item The index may not be selective enough, meaning that it does not significantly reduce the number of rows that need to be scanned.
+                  \item The query may involve complex conditions or functions that prevent the optimizer from using the index effectively.
+                  \item The index may be on a different column than the one being queried, or the query may not be written in a way that allows the optimizer to use the index.
+                  \item The index may be outdated or not maintained, leading to inaccurate statistics that affect the optimizer's decision-making process.
+            \end{itemize}
+
+      \item \textbf{How can partitioning improve query performance?}
+
+            By partitioning a table, the data is divided into smaller subsets based on a specified values or ranges connected to an attribute. This improves query performance by allowing the database to scan only the relevant partitions instead of the entire table, reducing the amount of data that needs to be processed.
 
 \end{enumerate}
 
