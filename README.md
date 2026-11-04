@@ -1,26 +1,32 @@
 # ARDS Labs
 
-Hands-on database labs. Every lab shares a single PostgreSQL instance managed
-by Docker Compose at the repository root; each lab owns one database inside it.
+Hands-on database labs. Labs use the shared PostgreSQL and MySQL services
+managed by Docker Compose at the repository root.
 
 ```
 ards/
-├── compose.yaml                 # shared PostgreSQL service
+├── compose.yaml                 # shared PostgreSQL and MySQL services
 ├── .env                         # local credentials/ports (git-ignored)
 ├── .env.example                 # documented template
 ├── .idea/dataSources.xml        # shared DataGrip connections (no credentials)
 ├── Makefile                     # optional command facade (see below)
 ├── docker/postgres/initdb/      # creates one DB per lab on a fresh cluster
 ├── data/                        # runtime data (git-ignored, folder is kept)
-│   └── postgres/                # PostgreSQL cluster (created on first start)
+│   ├── postgres/                # PostgreSQL cluster (created on first start)
+│   └── mysql/                   # MySQL data directory (created on first start)
 ├── scripts/
 │   ├── lib/db.sh                # shared access layer (compose + psql helpers)
+│   ├── lib/mysql.sh             # shared MySQL access layer
 │   ├── db-up.sh                 # start instance + ensure databases
 │   ├── db-stop.sh               # stop instance, keep data
 │   ├── db-status.sh             # status + database list
 │   ├── db-create.sh             # create a database
 │   └── db-shell.sh              # interactive psql
 └── labs/
+    ├── lab_1/
+    │   ├── README.md            # MySQL DBMS internals lab
+    │   ├── config.sh            # LAB_DB_NAME=demo_db
+    │   └── scripts/             # schema, data and metadata exercises
     ├── lab_2/
     │   ├── README.md            # lab guide, incl. activity #2 performance logging
     │   ├── config.sh            # LAB_DB_NAME=optimization_db
@@ -34,13 +40,14 @@ ards/
 ## Requirements
 
 - Docker with the Compose v2+ plugin (`docker compose version`).
-- Nothing else: PostgreSQL runs in the container.
+- Nothing else: PostgreSQL and MySQL run in containers.
 
 ## Quick start
 
 ```bash
 cp .env.example .env        # first time only
 make up                     # start PostgreSQL, create optimization_db
+make lab_1                  # DBMS internals menu for MySQL and PostgreSQL
 make lab_2                  # lab 2 interactive menu
 ```
 
@@ -62,6 +69,9 @@ make lab_2-report
 
 The per-lab walkthrough and the query performance logging exercise are documented
 in [labs/lab_2/README.md](labs/lab_2/README.md).
+
+The DBMS internals exercise in [labs/lab_1/README.md](labs/lab_1/README.md)
+uses MySQL and can be run independently of `make up`.
 
 The transactions and concurrency exercises in `labs/lab_3/` use the same shared
 PostgreSQL instance:
@@ -89,6 +99,8 @@ Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 | `make db-info` | Print host, port, user and JDBC URLs for DataGrip |
 | `make labs` | List discovered labs |
 | `make lab_2` | Open a lab's interactive menu |
+| `make lab_1-schema` / `make lab_1-data` / `make lab_1-metadata` | Create the MySQL schema, load data and query metadata |
+| `make lab_1-postgres-schema` / `lab_1-postgres-data` / `lab_1-postgres-metadata` | Run the equivalent PostgreSQL lab 1 exercises |
 | `make lab_2-schema [ARGS=--reset]` | Create tables, or recreate only that lab's database |
 | `make lab_2-data [ARGS=--force]` | Insert sample data |
 | `make lab_2-explain` / `lab_2-indexes` / `lab_2-rewrite` / `lab_2-partition [ARGS=--bulk]` | Lab demos |
@@ -189,7 +201,8 @@ Lab scripts:
 Rules:
 
 - Never call `docker run`, `docker exec`, or `docker compose` directly in a lab.
-- Never hardcode a container name; target the `postgres` service through `db.sh`.
+- Never hardcode a container name; target a Compose service through the shared
+  database helper.
 - Never use the maintenance database (`postgres`) as a lab database.
 - Destructive helpers must stay scoped to the lab's own database (`db_drop`
   refuses `postgres`, `template0` and `template1`).
@@ -197,12 +210,14 @@ Rules:
 
 ## How the pieces fit
 
-- `compose.yaml` defines one `postgres:14` service, a health check, a localhost
-  port binding and a bind mount that stores the cluster in `data/postgres`.
+- `compose.yaml` defines PostgreSQL and MySQL services, health checks, localhost
+  port bindings and bind mounts for their data directories.
 - `docker/postgres/initdb/00-create-databases.sh` creates every database in
   `POSTGRES_DATABASES`. It only runs when the cluster is initialized.
 - `scripts/lib/db.sh` loads `.env`, wraps `docker compose`, waits for
   `pg_isready`, and exposes `db_*` helpers used by every script.
+- `scripts/lib/mysql.sh` provides the equivalent Compose and MySQL helpers for
+  lab 1.
 - Lab scripts pass their own database name, so additional labs and scripts can
   coexist in the same container without collisions.
 

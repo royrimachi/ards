@@ -11,6 +11,7 @@ compose.override.yaml
 
 # PostgreSQL data directory (created at runtime; initdb needs it empty).
 /data/postgres/
+/data/mysql/
 
 # Local backups.
 /backups/
