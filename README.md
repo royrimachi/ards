@@ -21,9 +21,13 @@ ards/
 │   ├── db-create.sh             # create a database
 │   └── db-shell.sh              # interactive psql
 └── labs/
-    └── lab_2/
-        ├── README.md            # lab guide, incl. activity #2 performance logging
-        ├── config.sh            # LAB_DB_NAME=optimization_db
+    ├── lab_2/
+    │   ├── README.md            # lab guide, incl. activity #2 performance logging
+    │   ├── config.sh            # LAB_DB_NAME=optimization_db
+    │   └── scripts/             # lab exercises
+    └── lab_3/
+        ├── README.md            # transactions and concurrency exercises
+        ├── config.sh            # LAB_DB_NAME=concurrency_db
         └── scripts/             # lab exercises
 ```
 
@@ -58,6 +62,17 @@ make lab_2-report
 
 The per-lab walkthrough and the query performance logging exercise are documented
 in [labs/lab_2/README.md](labs/lab_2/README.md).
+
+The transactions and concurrency exercises in `labs/lab_3/` use the same shared
+PostgreSQL instance:
+
+```bash
+./labs/lab_3/scripts/create_db_env.sh   # start PostgreSQL and initialize concurrency_db
+make lab_3                              # open the interactive lab menu
+```
+
+Set `LAB_DB_NAME` to use a different database name. The scripts use the shared
+database configuration from `.env` and do not create a separate container.
 
 Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 `.env`, database `optimization_db`.
