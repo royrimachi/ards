@@ -1,10 +1,11 @@
 # compose.yaml
-# Shared PostgreSQL instance for every lab in the project.
+# Shared database services for every lab in the project.
 #
-# - One container, one data directory, and one set of credentials for the whole
-#   repo. Database files are bind-mounted into ./data/postgres (git-ignored).
+# - One container and data directory per database engine. Database files are
+#   bind-mounted into ./data (git-ignored).
 # - Each lab creates and uses its own database inside this instance
-#   (lab_2 -> optimization_db, a future lab_3 -> lab_3_db, and so on).
+#   (lab_1 -> demo_db in MySQL, lab_2 -> optimization_db in PostgreSQL,
+#   lab_3 -> concurrency_db in PostgreSQL, and so on).
 # - Managed through ./scripts/db-*.sh or `docker compose`; labs must not start
 #   their own containers.
 
@@ -34,3 +35,20 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env (copy .env.example first)}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-demo_db}
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - ${MYSQL_DATA_DIR:-./data/mysql}:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s

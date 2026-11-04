@@ -97,12 +97,28 @@ lab_%-report: ## Show query performance trends: make lab_2-report
 	$(call guard,$*)
 	./labs/lab_$*/scripts/log_performance.sh --report
 
+lab_%-metadata: ## Run metadata queries: make lab_1-metadata
+	$(call guard,$*)
+	./labs/lab_$*/scripts/metadata_queries.sh
+
+lab_1-postgres-schema: ## Create lab 1 PostgreSQL schema
+	./labs/lab_1/scripts/create_schema_postgres.sh $(ARGS)
+
+lab_1-postgres-data: ## Insert lab 1 PostgreSQL sample data
+	./labs/lab_1/scripts/insert_data_postgres.sh $(ARGS)
+
+lab_1-postgres-metadata: ## Run lab 1 PostgreSQL metadata queries
+	./labs/lab_1/scripts/metadata_queries_postgres.sh
+
+lab_1-postgres-reset: ## DESTRUCTIVE: recreate lab 1 PostgreSQL database
+	./labs/lab_1/scripts/create_schema_postgres.sh --reset
+
 lab_%-reset: ## DESTRUCTIVE: recreate only that lab's database
 	$(call guard,$*)
 	./labs/lab_$*/scripts/create_schema.sh --reset
 
 check: ## Validate shell syntax and compose configuration
-	@for f in scripts/*.sh scripts/lib/db.sh \
+	@for f in scripts/*.sh scripts/lib/*.sh \
 	          $(wildcard labs/*/config.sh) $(wildcard labs/*/scripts/*.sh) \
 	          docker/postgres/initdb/*.sh; do \
 		bash -n "$$f" || exit 1; \
