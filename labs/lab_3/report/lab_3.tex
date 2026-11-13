@@ -1,0 +1,309 @@
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage[english]{babel}
+\usepackage{csquotes}
+\usepackage{graphicx}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{parskip}
+\usepackage{geometry}
+\usepackage{setspace}
+
+
+\geometry{a4paper, margin=1in}
+\title{Lab 3\@: Concurrency Analysis and Logging Tool}
+\author{Roy Joseph Rimachi Costillas}
+\date{\today}
+
+\singlespacing
+
+\begin{document}
+
+\maketitle
+
+\section{Objective}
+
+The objective of this activity is to extend the Lab 3 concurrency scripts with a
+logging layer that detects lock waits, lock timeouts and deadlocks, records the
+relevant context in a dedicated \texttt{concurrency\_log} table, and provides a
+short report that summarizes the collected events by timeframe and isolation
+level.
+
+\section{Implementation}
+
+The implementation keeps the existing Lab 3 database and adds three pieces:
+the log table, SQL logging functions, and the
+\texttt{log\_concurrency.sh} harness. The harness starts concurrent psql
+sessions against the lab database, coordinates the acquisition of row locks,
+and stores one row per detected conflict.
+
+The activity is driven entirely from \texttt{labs/lab\_3}: the following
+scripts are the deliverable, and no repository-level \texttt{make} target is
+required.
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+File & Role \\
+\hline
+\texttt{scripts/create\_db\_env.sh} & Start PostgreSQL and initialize the database \\
+\texttt{scripts/init\_db.sql} & Create \texttt{account} and \texttt{concurrency\_log} \\
+\texttt{scripts/concurrency\_logging.sql} & Logging function and lock probes \\
+\texttt{scripts/log\_concurrency.sh} & Run the scenarios or the report \\
+\texttt{scripts/concurrency\_report.sql} & Timeframe and isolation-level queries \\
+\texttt{scripts/simulate\_deadlock.sh} & Automated deadlock entry point \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{The concurrency log table}
+
+The \texttt{concurrency\_log} table is append-only. Its required columns are
+\texttt{log\_id}, \texttt{log\_timestamp}, \texttt{isolation\_level},
+\texttt{conflict\_type} and \texttt{resource\_info}. The remaining columns add
+the information needed to troubleshoot a conflict: the table and row involved,
+the measured wait, the PostgreSQL SQLSTATE, the backend and blocking PIDs, the
+originating scenario and a JSONB details field.
+
+\begin{verbatim}
+CREATE TABLE IF NOT EXISTS concurrency_log (
+    log_id           BIGSERIAL PRIMARY KEY,
+    log_timestamp    TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    isolation_level  TEXT NOT NULL,
+    conflict_type    TEXT NOT NULL,
+    resource_info    TEXT NOT NULL,
+    table_name       TEXT,
+    row_info         TEXT,
+    wait_duration_ms NUMERIC(12, 3),
+    error_code       TEXT,
+    backend_pid      INT,
+    blocking_pid     INT,
+    scenario         TEXT,
+    details          JSONB,
+    logged_by        NAME NOT NULL DEFAULT current_user
+);
+\end{verbatim}
+
+The column mapping to the activity requirements is summarized below.
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Requirement & Column \\
+\hline
+Timestamp & \texttt{log\_timestamp} \\
+Isolation level & \texttt{isolation\_level} \\
+Conflict type & \texttt{conflict\_type} \\
+Resource information & \texttt{resource\_info} \\
+Table involved & \texttt{table\_name} \\
+Row involved & \texttt{row\_info} \\
+Wait duration & \texttt{wait\_duration\_ms} \\
+PostgreSQL error code & \texttt{error\_code} \\
+Blocking relationship & \texttt{backend\_pid}, \texttt{blocking\_pid} \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Detection scenarios}
+
+Three scenarios are provided. They use \texttt{SELECT ... FOR UPDATE} to
+acquire real row locks without changing the account balances.
+
+\begin{itemize}
+    \item \textbf{Lock wait.} A holder transaction locks Alice's row and sleeps
+    for three seconds. A second transaction tries to lock the same row. The
+    \texttt{demo\_lock\_wait\_probe()} function measures the wait with
+    \texttt{clock\_timestamp()} and logs a \texttt{lock\_wait} event when the
+    wait exceeds 50 milliseconds.
+
+    \item \textbf{Lock timeout.} The holder locks the row, while the waiter sets
+    a transaction-local \texttt{lock\_timeout} of one second. The
+    \texttt{demo\_lock\_timeout\_probe()} function catches SQLSTATE
+    \texttt{55P03} and logs a \texttt{lock\_timeout} event without aborting the
+    logging transaction.
+
+    \item \textbf{Deadlock.} Session A locks Alice and then Bob, while session B
+    locks Bob and then Alice. PostgreSQL detects the cycle and aborts one
+    transaction with SQLSTATE \texttt{40P01}. The harness identifies the victim
+    from the psql error output and logs the victim and blocker PIDs.
+\end{itemize}
+
+Readiness does not depend on fixed delays. Each background session sets a
+unique \texttt{application\_\allowbreak name}, and the harness polls
+\texttt{pg\_stat\_\allowbreak activity} until that session is sleeping in
+\texttt{pg\_sleep}. This confirms that the first lock has been acquired before
+the second transaction starts.
+
+\section{Results}
+
+Figure~\ref{fig:harness} shows one complete run of the harness. The run produced
+one event of each type: a lock wait of approximately 2.9 seconds, a lock
+timeout of approximately 1 second with SQLSTATE \texttt{55P03}, and a deadlock
+with SQLSTATE \texttt{40P01}. The final table confirms that the events were
+stored in \texttt{concurrency\_log}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/log_concurrency.png}
+    \caption{Complete \texttt{log\_concurrency.sh} run with all three scenarios
+    and the latest log rows.}
+    \label{fig:harness}
+\end{figure}
+
+Figure~\ref{fig:lockwait} shows the lock wait scenario in isolation. The waiter
+blocked for 2927.448 milliseconds while the holder kept Alice's row locked, and
+the resulting row records the isolation level, resource, wait duration and
+backend PIDs.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/lock_wait.v1.png}
+    \caption{Lock wait scenario under \texttt{READ COMMITTED}.}
+    \label{fig:lockwait}
+\end{figure}
+
+Figure~\ref{fig:locktimeout} shows the timeout path. PostgreSQL returned
+SQLSTATE \texttt{55P03} after 1001.850 milliseconds, and the exception handler
+logged the event as \texttt{lock\_timeout} instead of letting the transaction
+abort without a record.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/lock_timeout.png}
+    \caption{Lock timeout scenario with SQLSTATE \texttt{55P03}.}
+    \label{fig:locktimeout}
+\end{figure}
+
+Figure~\ref{fig:deadlock} shows the deadlock path. PostgreSQL selected one
+session as the victim, reported \texttt{deadlock detected}, and the harness
+stored the event with the victim and blocker backend PIDs and SQLSTATE
+\texttt{40P01}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/deadlock.png}
+    \caption{Deadlock scenario after PostgreSQL breaks the lock cycle.}
+    \label{fig:deadlock}
+\end{figure}
+
+\section{Reporting}
+
+The report is generated with a configurable timeframe:
+
+\begin{verbatim}
+./labs/lab_3/scripts/log_concurrency.sh --report --minutes 60
+\end{verbatim}
+
+\texttt{scripts/concurrency\_report.sql} produces four result sets: events
+grouped by conflict type and isolation level, totals by conflict type, lock
+hotspots by table, and the most recent events. Figure~\ref{fig:report1} shows
+the first run, where each conflict type has exactly one event.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/concurrency_report.v1.png}
+    \caption{Initial concurrency report for the last 60 minutes.}
+    \label{fig:report1}
+\end{figure}
+
+Figure~\ref{fig:report2} shows the report after additional scenario runs. The
+counts have increased, the averages are visible, and the recent-events section
+contains the complete history of the narrower timeframe.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/concurrency_report.v2.png}
+    \caption{Report after additional scenario runs.}
+    \label{fig:report2}
+\end{figure}
+
+The same summary can be expressed directly in SQL:
+
+\begin{verbatim}
+SELECT conflict_type,
+       isolation_level,
+       count(*) AS events,
+       round(avg(wait_duration_ms), 1) AS avg_wait_ms,
+       round(max(wait_duration_ms), 1) AS max_wait_ms
+FROM concurrency_log
+WHERE log_timestamp >= now() - make_interval(mins => 60)
+GROUP BY conflict_type, isolation_level
+ORDER BY events DESC;
+\end{verbatim}
+
+\section{Isolation-Level Comparison}
+
+The harness accepts an isolation level, so the same lock-wait scenario can be
+repeated under \texttt{REPEATABLE READ}. Figure~\ref{fig:repeatable} shows the
+result: the wait is measured and logged with isolation level
+\texttt{REPEATABLE READ}. This demonstrates why storing and grouping by
+\texttt{isolation\_level} is useful when comparing conflict rates across
+transaction configurations.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../images/lock_wait.v2.png}
+    \caption{Lock wait scenario under \texttt{REPEATABLE READ}.}
+    \label{fig:repeatable}
+\end{figure}
+
+\section{Production Value}
+
+The activity demonstrates a pattern that scales beyond the lab:
+
+\begin{itemize}
+    \item Concurrency conflicts are recorded with enough context to identify
+    the table, row, wait duration, isolation level and blocking session.
+    \item The timeframe report supports troubleshooting and can feed a
+    dashboard or an alert when deadlocks or long waits exceed a threshold.
+    \item Isolation-level grouping helps decide whether a stricter isolation
+    level is creating more conflicts than the application can tolerate.
+    \item The append-only history supports trend analysis and database tuning;
+    a production deployment would add retention or partition the table by
+    timestamp.
+\end{itemize}
+
+The lab scenarios are synthetic and the harness is not a continuous background
+collector. A production implementation would poll
+\texttt{pg\_stat\_activity} and \texttt{pg\_locks}, or consume PostgreSQL
+server logs, and would keep the monitoring load separate from application
+transactions.
+
+\section{Conclusion}
+
+The implementation satisfies the activity requirements: it detects lock waits,
+lock timeouts and deadlocks; stores timestamp, isolation level, conflict type
+and resource information in \texttt{concurrency\_log}; and provides a short,
+parameterized reporting query that summarizes events by timeframe and
+isolation level. The stored information is sufficient to explain what waited,
+on which row, for how long and which session was blocking it.
+
+\section{Reproduction}
+
+The complete sequence is run from the repository root and uses only the scripts
+in \texttt{labs/\allowbreak lab\_3/\allowbreak scripts}:
+
+\begin{verbatim}
+./labs/lab_3/scripts/create_db_env.sh
+./labs/lab_3/scripts/log_concurrency.sh
+./labs/lab_3/scripts/log_concurrency.sh --report --minutes 60
+\end{verbatim}
+
+The first command starts PostgreSQL, creates \texttt{concurrency\_db}, loads
+\texttt{init\_db.sql} and installs the logging functions from
+\texttt{concurrency\_logging.sql}. The second command runs the three scenarios,
+and the third prints the report.
+
+Individual scenarios can be repeated with:
+
+\begin{verbatim}
+./labs/lab_3/scripts/log_concurrency.sh --scenario lock-wait
+./labs/lab_3/scripts/log_concurrency.sh --scenario lock-timeout
+./labs/lab_3/scripts/log_concurrency.sh --scenario deadlock
+\end{verbatim}
+
+The isolation level is selected with the
+\texttt{--isolation} flag, for example
+\texttt{REPEATABLE READ}.
+
+\end{document}
