@@ -30,3 +30,6 @@ echo "  SELECT * FROM account;"
 echo
 echo "READ COMMITTED sees the latest committed data at each statement,"
 echo "while REPEATABLE READ keeps the snapshot from transaction start."
+echo
+echo "To record a lock wait at a specific isolation level, run:"
+echo "  $SCRIPT_DIR/log_concurrency.sh --scenario lock-wait --isolation \"REPEATABLE READ\""

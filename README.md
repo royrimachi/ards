@@ -49,6 +49,7 @@ cp .env.example .env        # first time only
 make up                     # start PostgreSQL, create optimization_db
 make lab_1                  # DBMS internals menu for MySQL and PostgreSQL
 make lab_2                  # lab 2 interactive menu
+make lab_3                  # transactions and concurrency menu
 ```
 
 Or run the lab steps directly with make:
@@ -77,9 +78,22 @@ The transactions and concurrency exercises in `labs/lab_3/` use the same shared
 PostgreSQL instance:
 
 ```bash
-./labs/lab_3/scripts/create_db_env.sh   # start PostgreSQL and initialize concurrency_db
+make lab_3-setup                         # start PostgreSQL and initialize concurrency_db
 make lab_3                              # open the interactive lab menu
 ```
+
+Activity #3 adds a concurrency logging tool:
+
+```bash
+make lab_3-log                          # run lock wait, timeout and deadlock scenarios
+make lab_3-log ARGS="--scenario deadlock"
+make lab_3-report ARGS="--minutes 60"   # summarize concurrency_log
+```
+
+The events are stored in `concurrency_log` with timestamp, isolation level,
+conflict type, table/row information and the PostgreSQL SQLSTATE. See
+[labs/lab_3/README.md](labs/lab_3/README.md) for the schema, reporting queries
+and production notes.
 
 Set `LAB_DB_NAME` to use a different database name. The scripts use the shared
 database configuration from `.env` and do not create a separate container.
@@ -106,6 +120,9 @@ Connect with any SQL client at `127.0.0.1:5432` using the credentials from
 | `make lab_2-explain` / `lab_2-indexes` / `lab_2-rewrite` / `lab_2-partition [ARGS=--bulk]` | Lab demos |
 | `make lab_2-log [ARGS="--repeat 3 --interval 2"]` | Log EXPLAIN ANALYZE metrics for the critical queries |
 | `make lab_2-report` | Show average timings, run-over-run deltas and daily trends |
+| `make lab_3-setup` | Start PostgreSQL and initialize `concurrency_db` |
+| `make lab_3-log [ARGS="--scenario deadlock"]` | Run and log concurrency scenarios in `concurrency_log` |
+| `make lab_3-report [ARGS="--minutes 60"]` | Summarize lock waits, timeouts and deadlocks |
 | `make lab_2-reset` | **Destructive**: drop and recreate only that lab's database |
 | `make check` | Validate shell syntax and the compose file |
 
