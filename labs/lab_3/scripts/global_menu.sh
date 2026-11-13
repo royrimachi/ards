@@ -13,7 +13,9 @@ source "$SCRIPT_DIR/../../../scripts/lib/db.sh"
 source "$SCRIPT_DIR/../config.sh"
 
 run_script() {
-  bash "$SCRIPT_DIR/$1"
+  local script="$1"
+  shift
+  bash "$SCRIPT_DIR/$script" "$@"
 }
 
 while true; do
@@ -24,15 +26,17 @@ while true; do
   echo
   echo "1) Start PostgreSQL and initialize the lab database"
   echo "2) Test different isolation levels"
-  echo "3) Simulate a deadlock"
+  echo "3) Simulate and log a deadlock"
   echo "4) Demonstrate MVCC"
-  echo "5) Show database status"
-  echo "6) Open the lab database shell"
-  echo "7) Stop PostgreSQL (keep data)"
-  echo "8) Exit"
+  echo "5) Run all concurrency logging scenarios"
+  echo "6) Show the concurrency conflict report"
+  echo "7) Show database status"
+  echo "8) Open the lab database shell"
+  echo "9) Stop PostgreSQL (keep data)"
+  echo "10) Exit"
   echo
 
-  read -r -p "Enter choice [1-8]: " choice
+  read -r -p "Enter choice [1-10]: " choice
   echo
 
   case "$choice" in
@@ -40,11 +44,13 @@ while true; do
     2) run_script isolation_levels.sh ;;
     3) run_script simulate_deadlock.sh ;;
     4) run_script mvcc_demo.sh ;;
-    5) db_status ;;
-    6) db_shell "$LAB_DB_NAME" ;;
-    7) db_stop ;;
-    8) echo "Exiting..."; break ;;
-    *) echo "Invalid choice. Please enter a number between 1 and 8." ;;
+    5) run_script log_concurrency.sh ;;
+    6) run_script log_concurrency.sh --report ;;
+    7) db_status ;;
+    8) db_shell "$LAB_DB_NAME" ;;
+    9) db_stop ;;
+    10) echo "Exiting..."; break ;;
+    *) echo "Invalid choice. Please enter a number between 1 and 10." ;;
   esac
 
   echo

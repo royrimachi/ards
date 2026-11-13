@@ -20,8 +20,11 @@ db_up
 db_wait_ready
 db_create "$LAB_DB_NAME"
 db_run_sql_file "$LAB_DB_NAME" "$SCRIPT_DIR/init_db.sql"
+db_run_sql_file "$LAB_DB_NAME" "$SCRIPT_DIR/concurrency_logging.sql"
 
 echo
 echo "Database setup completed."
 echo "Database: $LAB_DB_NAME"
 echo "Connect with: $PROJECT_ROOT/scripts/db-shell.sh $LAB_DB_NAME"
+echo "Log conflicts with: $SCRIPT_DIR/log_concurrency.sh"
+echo "Report conflicts with: $SCRIPT_DIR/log_concurrency.sh --report"
