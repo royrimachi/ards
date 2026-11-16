@@ -20,7 +20,9 @@ LABS := $(notdir $(patsubst %/config.sh,%,$(wildcard labs/*/config.sh)))
 # guard <stem>: fails with a helpful message when the lab does not exist.
 guard = @test -d "labs/lab_$1" || { echo "error: unknown lab '$1' (available: $(LABS))" >&2; exit 1; }
 
-.PHONY: help up stop restart status down psql db-create db-info labs check $(LABS) lab_3-setup lab_3-log lab_3-report
+.PHONY: help up stop restart status down psql db-create db-info labs check $(LABS) \
+	lab_3-setup lab_3-log lab_3-report lab_4-setup lab_4-master lab_4-slave \
+	lab_4-init lab_4-test lab_4-failover lab_4-stop
 
 help: ## Show this help
 	@echo "ARDS Labs - available targets"
@@ -123,6 +125,27 @@ lab_3-log: ## Log concurrency conflicts: make lab_3-log [ARGS="--scenario deadlo
 
 lab_3-report: ## Show concurrency conflict report: make lab_3-report [ARGS="--minutes 60"]
 	./labs/lab_3/scripts/log_concurrency.sh --report $(ARGS)
+
+lab_4-setup: ## Start the isolated lab 4 primary service
+	./labs/lab_4/scripts/setup_docker_env.sh
+
+lab_4-master: ## Start the lab 4 primary service
+	./labs/lab_4/scripts/start_master.sh
+
+lab_4-slave: ## Start the lab 4 standby service
+	./labs/lab_4/scripts/start_slave.sh
+
+lab_4-init: ## Initialize lab 4 streaming replication
+	./labs/lab_4/scripts/init_replication.sh
+
+lab_4-test: ## Verify lab 4 streaming replication
+	./labs/lab_4/scripts/test_replication.sh
+
+lab_4-failover: ## Promote the lab 4 standby after stopping the primary
+	./labs/lab_4/scripts/simulate_failover.sh
+
+lab_4-stop: ## Stop lab 4 services while preserving named volumes
+	docker compose --project-name ards-lab4 -f compose.yaml stop master slave
 
 lab_%-reset: ## DESTRUCTIVE: recreate only that lab's database
 	$(call guard,$*)
