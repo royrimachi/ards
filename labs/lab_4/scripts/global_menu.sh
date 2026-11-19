@@ -19,10 +19,11 @@ while true; do
   echo "4) Initialize replication"
   echo "5) Test replication"
   echo "6) Simulate failover"
-  echo "7) Show service status"
-  echo "8) Stop lab services"
-  echo "9) Exit"
-  read -r -p "Enter choice [1-9]: " choice
+  echo "7) Check replication health"
+  echo "8) Show service status"
+  echo "9) Stop lab services"
+  echo "10) Exit"
+  read -r -p "Enter choice [1-10]: " choice
   echo
 
   case "$choice" in
@@ -32,10 +33,11 @@ while true; do
     4) run_script init_replication.sh ;;
     5) run_script test_replication.sh ;;
     6) run_script simulate_failover.sh ;;
-    7) source "$SCRIPT_DIR/common.sh"; compose_lab4 ps ;;
-    8) source "$SCRIPT_DIR/common.sh"; compose_lab4 stop ;;
-    9) break ;;
-    *) echo "Invalid choice. Please enter a number between 1 and 9." ;;
+    7) run_script check_replication_health.sh --once ;;
+    8) source "$SCRIPT_DIR/common.sh"; compose_lab4 ps ;;
+    9) source "$SCRIPT_DIR/common.sh"; compose_lab4 stop ;;
+    10) break ;;
+    *) echo "Invalid choice. Please enter a number between 1 and 10." ;;
   esac
   echo
 done

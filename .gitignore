@@ -330,6 +330,5 @@ TSWLatexianTemp*
 # glossaries
 *.glstex
 
-# Local scratch material (temporary screenshots, notes and drafts).
-# Anything placed under local/ stays on this machine and is never committed.
-/local/
+## Lab report screenshots
+/labs/*/images/

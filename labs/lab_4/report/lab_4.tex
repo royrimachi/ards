@@ -1,0 +1,103 @@
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage[english]{babel}
+\usepackage{csquotes}
+\usepackage{graphicx}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{parskip}
+\usepackage{geometry}
+\usepackage{setspace}
+
+\geometry{a4paper, margin=1in}
+\setlength{\emergencystretch}{2em}
+\title{Lab 4\@: Automatic Replication Health Checker and Alert Script}
+\author{Roy Joseph Rimachi Costillas}
+\date{\today}
+
+\singlespacing
+
+\begin{document}
+
+\maketitle
+
+\begin{enumerate}
+      \item \textbf{How does the health checker periodically detect lag or offline replicas?}
+
+            The lab uses an isolated PostgreSQL primary and standby pair managed by Docker Compose. The standby is initialized by the script \texttt{init\_replication.sh}, which creates a fresh \texttt{pg\_basebackup} and starts the standby in recovery mode.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/1_init_db.png}
+                  \caption{Initialization of the PostgreSQL primary and standby replication pair.}
+            \end{figure}
+
+            The script \texttt{check\_replication\_health.sh} performs one health check or continues polling at a configurable interval. It queries \texttt{pg\_stat\_replication} on the primary to determine whether the standby is streaming and to compare reply, replay, and communication age with the configured threshold. It also queries \texttt{pg\_is\_in\_recovery()} and \texttt{pg\_stat\_wal\_receiver} on the standby to verify that the standby remains in recovery and that its WAL receiver is active.
+
+            The default threshold is ten seconds. An anomaly is classified as \texttt{lag\_exceeded}, \texttt{stale\_replica}, \texttt{wal\_receiver\_stale}, \texttt{not\_connected}, \texttt{offline}, or \texttt{not\_in\_recovery}, depending on the result. A strict zero-second threshold can be used to deliberately exercise threshold alerting.
+
+      \item \textbf{How are replication incidents logged and reported?}
+
+            When the primary is reachable, the checker creates or updates the \texttt{replication\_alerts} table and inserts each detected incident with the node name, timestamp, anomaly type, and descriptive details. Every incident is also printed as a warning on the console.
+
+            The table uses \texttt{node\_name}, \texttt{alert\_time}, \texttt{anomaly\_type}, and \texttt{details}. Separating node identity from anomaly type makes it possible to group recurring failures and feed the same data into a dashboard or external alerting system.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/2_test_replication.png}
+                  \caption{Replication test proving that a row written on the primary is visible on the standby.}
+            \end{figure}
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/3_healthy_status.png}
+                  \caption{Healthy status followed by a one-shot result showing that both nodes are connected.}
+            \end{figure}
+
+            Continuous monitoring was demonstrated with a five-second polling interval. The checker repeated the same healthy status while the replication pair remained available.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/4_continuous_check.png}
+                  \caption{Periodic health checks executed with a five-second interval and ten-second threshold.}
+            \end{figure}
+
+      \item \textbf{How is node failure, recovery, and threshold violation verified?}
+
+            To test an unavailable replica, the standby container was stopped before running the one-shot health checker. PostgreSQL reported that no standby was present in \texttt{pg\_stat\_replication}, and the standby side of the check could not accept a connection. The script printed the \texttt{not\_connected} and \texttt{offline} warnings.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/5_unreachable_standby.png}
+                  \caption{Health check showing that the standby is unavailable and not connected.}
+            \end{figure}
+
+            The primary-side alert table preserved the incidents and allowed them to be retrieved with a SQL query ordered by alert time.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/6_persisted_alerts.png}
+                  \caption{Rows in \texttt{replication\_alerts} recording unreachable and stale WAL receiver events.}
+            \end{figure}
+
+            After restarting the standby, the primary and standby returned to healthy streaming replication. The follow-up one-shot check reported that both nodes were connected and within the configured threshold.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/7_restore_standby.png}
+                  \caption{Standby restoration and recovery to a healthy replication state.}
+            \end{figure}
+
+            The threshold behavior was also demonstrated with a zero-second threshold. Communication ages greater than zero seconds produced \texttt{stale\_replica} and \texttt{wal\_receiver\_stale} warnings. This demonstrates that the checker compares measured replication ages against the threshold rather than merely printing a successful status.
+
+            \begin{figure}[htbp]
+                  \centering
+                  \includegraphics[width=0.8\textwidth]{../images/8_threshold_alert.png}
+                  \caption{Zero-second threshold producing lag and stale communication warnings.}
+            \end{figure}
+
+            Overall, the exercise satisfies the objectives of fast failure detection, persistent incident logging, console alerting, periodic status feedback, and real-time recovery verification. The implemented scripts also allow the checks to run in a few minutes and avoid introducing downtime when the standby is stopped and restored.
+
+\end{enumerate}
+
+\end{document}

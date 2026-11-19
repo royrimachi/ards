@@ -22,7 +22,7 @@ guard = @test -d "labs/lab_$1" || { echo "error: unknown lab '$1' (available: $(
 
 .PHONY: help up stop restart status down psql db-create db-info labs check $(LABS) \
 	lab_3-setup lab_3-log lab_3-report lab_4-setup lab_4-master lab_4-slave \
-	lab_4-init lab_4-test lab_4-failover lab_4-stop
+	lab_4-init lab_4-test lab_4-health lab_4-failover lab_4-stop
 
 help: ## Show this help
 	@echo "ARDS Labs - available targets"
@@ -140,6 +140,9 @@ lab_4-init: ## Initialize lab 4 streaming replication
 
 lab_4-test: ## Verify lab 4 streaming replication
 	./labs/lab_4/scripts/test_replication.sh
+
+lab_4-health: ## Check lab 4 replication health
+	./labs/lab_4/scripts/check_replication_health.sh $(ARGS)
 
 lab_4-failover: ## Promote the lab 4 standby after stopping the primary
 	./labs/lab_4/scripts/simulate_failover.sh
